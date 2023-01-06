@@ -1,0 +1,6 @@
+<footer>
+    &copy; LandBnB
+    {% comment %} {% for room in rooms %}
+	    {% include 'partials/room_card.html' with room=room %} # 👈 with 사용
+    {% endfor %} {% endcomment %}
+</footer>
