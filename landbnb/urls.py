@@ -23,6 +23,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("users/", include("users.urls", namespace="users")),
     path("houses/", include("house.urls", namespace="houses")),
+    path("reservations/", include("reservation.urls", namespace="reservations")),
+    path("reviews/", include("review.urls", namespace="reviews")),
 ]
 
 if settings.DEBUG:

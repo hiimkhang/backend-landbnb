@@ -1,9 +1,9 @@
 from django.db import models
-from house.models import TimeStampedModel
 from django.core.validators import MinValueValidator, MaxValueValidator
+from core import models as core_models
 # Create your models here.
 
-class Review(TimeStampedModel):
+class Review(core_models.TimeStampedModel):
 
     review = models.TextField()
     customer_service = models.IntegerField(
@@ -36,4 +36,6 @@ class Review(TimeStampedModel):
             + self.suitable_price) / 4
         return round(avg, 2)
     
-    avgRating.short_description = "Avg."
+    # avgRating.short_description = "Avg."
+    # class Meta:
+    #     ordering = ("-created",)

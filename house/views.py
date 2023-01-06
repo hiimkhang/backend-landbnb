@@ -1,9 +1,13 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, reverse
 from django.utils import timezone
 from . import models, forms
-from django.core.paginator import Paginator, EmptyPage
-from django.views.generic import ListView, DetailView, View
+from django.core.paginator import Paginator
+from django.views.generic import ListView, DetailView, View, UpdateView, FormView
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django_countries import countries
+from users import mixin as user_mixins
+from django.http import Http404
 
 # Create your views here.
 
@@ -16,13 +20,13 @@ class HomeView(ListView):
     page_kwarg = "page" 
     context_object_name = "houses"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        now = timezone.now
-        context["now"] = now
+    # def get_context_data(self, **kwargs):
+    #     context = super().get_context_data(**kwargs)
+    #     now = timezone.now
+    #     context["now"] = now
         
-        return context
-    pass
+    #     return context
+    # pass
 
 class HouseDetail(DetailView):
     model = models.House
@@ -36,7 +40,7 @@ class SearchView(View):
             if form.is_valid():
                 country = form.cleaned_data.get("country")
                 city = form.cleaned_data.get("city")
-                room_type = form.cleaned_data.get("room_type")
+                house_type = form.cleaned_data.get("house_type")
                 price = form.cleaned_data.get("price")
                 guests = form.cleaned_data.get("guests")
                 bedrooms = form.cleaned_data.get("bedrooms")
@@ -50,8 +54,8 @@ class SearchView(View):
                 filter_args["country"] = country
                 if city != "":
                     filter_args["city__startswith"] = city
-                if room_type is not None:
-                    filter_args["room_type"] = room_type
+                if house_type is not None:
+                    filter_args["house_type"] = house_type
                 if price is not None:
                     filter_args["price__lte"] = price
                 if guests is not None:
@@ -66,69 +70,89 @@ class SearchView(View):
                     filter_args["amenities"] = amenity
                 for facility in facilities:
                     filter_args["facilities"] = facility
-                houses = models.House.objects.filter(**filter_args)
+
+                qs = models.House.objects.filter(**filter_args)
+                paginator = Paginator(qs, 10, orphans=5)
+                page = request.GET.get("page", 1)
+                houses = paginator.get_page(page)
+                context = {"form": form, "houses": houses}
+                return render(request, "house/search.html", context)
         else:
             form = forms.SearchForm()
+            context = {"form": form}
 
-        context = {"form": form, "houses":houses} 
+        # context = {"form": form, "houses":houses} 
 
         return render(request, "house/search.html", context)
 
-# def search2(request):
-#     city = request.GET.get("city", "")
-#     city = str.capitalize(city)
-#     country = request.GET.get("country", "")
-#     house_type = int(request.GET.get("house_type", 0))
-#     price = int(request.GET.get("price", 0))
-#     guest = int(request.GET.get("guest", 0))
-#     bedroom = int(request.GET.get("bedroom", 0))
-#     bed = int(request.GET.get("bed", 0))
-#     bath = int(request.GET.get("bath", 0))
+class CreateHouseView(user_mixins.LoggedInOnlyView, FormView):
+    form_class = forms.CreateHouseForm 
+    template_name = "house/house_create.html"
 
-#     s_amenities = request.GET.getlist("amenities") 
-#     s_facilities = request.GET.getlist("facilities") 
+    def form_valid(self, form):
+        house = form.save() 
+        house.host = self.request.user  
+        house.save()  
+        form.save_m2m() # many 2 many
+        messages.success(self.request, "House has been added")
+        return redirect(reverse("houses:detail", kwargs={"pk": house.pk}))
 
-#     form = {
-#         "city": city,
-#         "s_country": country,
-#         "s_house_type": house_type,
-#         "price": price,
-#         "guest": guest,
-#         "bedroom": bedroom,
-#         "bed": bed,
-#         "bath": bath,
-#         "s_amenities": s_amenities,
-#         "s_facilities": s_facilities,
-#     }
-#     house_types = models.HouseType.objects.all()
-#     amenities = models.Amenity.objects.all()
-#     facilities = models.Facility.objects.all()
-#     choices = {
-#         "countries": countries,
-#         "house_types": house_types,
-#         "amenities": amenities,
-#         "facilities": facilities,
-#     }
+class EditHouseView(user_mixins.LoggedInOnlyView, UpdateView): 
+    model = models.House 
+    template_name = "house/house_edit.html" 
+    fields = ( 
+        "name",
+        "description",
+        "country",
+        "city",
+        "price",
+        "address",
+        "guest",
+        "bed",
+        "bedroom",
+        "bathroom",
+        "check_in",
+        "check_out",
+        "house_type",
+        "amenities",
+        "facilities",
+    )
+    def get_object(self, queryset=None):
+        house = super().get_object(queryset=queryset)
+        if house.host.pk != self.request.user.pk:
+            raise Http404()
+        return house
 
-#     filter_args = {}
-#     if city != "": filter_args["city__startswith"] = city
-#     if country != "": filter_args["country"] = country
+class HousePhotosView(user_mixins.LoggedInOnlyView, DetailView):
+    model = models.House
+    template_name = "house/house_photos.html"
+    def get_object(self, queryset=None):  
+        house = super().get_object(queryset=queryset)
+        if house.host.pk != self.request.user.pk:
+            raise Http404()
+        return house
 
-#     if house_type != 0: filter_args["house_type__pk"] = house_type
-#     if price != 0: filter_args["price__lte"] = price
-#     if guest != 0: filter_args["guest__gte"] = guest
-#     if bedroom != 0: filter_args["bedroom__gte"] = bedroom
-#     if bed != 0: filter_args["bed__gte"] = bed
-#     if bath != 0: filter_args["bath__gte"] = bath
+class AddPhotoView(user_mixins.LoggedInOnlyView, FormView):
+    model = models.Photo
+    template_name = "house/photo_create.html"
+    fields = ("caption", "file")
+    form_class = forms.CreatePhotoForm
+    def form_valid(self, form):
+        pk = self.kwargs.get("pk")
+        form.save(pk)
+        messages.success(self.request, "Photo has been uploaded")
+        return redirect(reverse("houses:photos", kwargs={"pk": pk}))
 
-#     if len(s_amenities) > 0:
-#         for s_amenity in s_amenities:
-#             filter_args["amenities__pk"] = int(s_amenity)
-#     if len(s_facilities) > 0:
-#         for s_facility in s_facilities:
-#             filter_args["amenities__pk"] = int(s_facility)
-
-#     houses = models.House.objects.filter(**filter_args)
-
-#     return render(request, "house/search.html", {**form, **choices, "houses":houses})
-
+@login_required
+def delete_photo(request, house_pk, photo_pk):
+    user = request.user 
+    try:
+        house = models.House.objects.get(pk=house_pk)
+        if house.host.pk != user.pk: 
+            messages.error(request, "You don't have permission to delete this photo")
+        else:
+            models.Photo.objects.filter(pk=photo_pk).delete() 
+            messages.success(request, "Photo has been deleted") 
+        return redirect(reverse("houses:photos", kwargs={"pk": house_pk}))
+    except models.House.DoesNotExist: 
+        return redirect(reverse("core:home"))
