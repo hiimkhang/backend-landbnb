@@ -39,7 +39,7 @@ class HouseAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "name",
-                    "truncated_description",
+                    "description",
                     "country",
                     "city",
                     "address",
