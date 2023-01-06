@@ -5,7 +5,9 @@
 
     {%block content%}
         {% for house in object_list %}
-            <h1>Name: {{house.name}} -- Price: {{house.price}}$</h1>
+            <h1>
+                <a href="houses/{{house.pk}}"> Name: {{house.name}} -- Price: {{house.price}}$</a>
+            </h1>
         {% endfor %}
         <h5>
             {% if page_obj.has_previous %}

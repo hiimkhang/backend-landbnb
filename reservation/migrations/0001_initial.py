@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
                     "guest",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="reservation",
+                        related_name="reservations",
                         to=settings.AUTH_USER_MODEL,
                     ),
                 ),
@@ -55,7 +55,7 @@ class Migration(migrations.Migration):
                     "house",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="reservation",
+                        related_name="reservations",
                         to="house.house",
                     ),
                 ),

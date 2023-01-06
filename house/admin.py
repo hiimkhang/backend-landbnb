@@ -5,39 +5,13 @@ from . import models
 # Register your models here.
 @admin.register(models.HouseType)
 class ItemAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("name", "used_by")
+
+    def used_by(self, obj):
+        return obj.houses.count()
 
 @admin.register(models.Amenity)
 class AmenityAdmin(admin.ModelAdmin):
-    # class Bathroom(models.):
-    #     name = "Bathroom"
-    
-    # class Bedroom_Laundry(admin.ModelAdmin):
-    #     name = "Bedroom and laundry"
-    #     def __str__(self):
-    #         return self.name
-    #     pass
-
-    # class Heating_Cooling(admin.ModelAdmin):
-    #     name = "Heating and cooling"
-    #     def __str__(self):
-    #         return self.name
-    #     pass
-    
-    # fieldsets = (
-    #     (
-    #         "Bathroom", {"fields": ()}
-    #     ),
-    #     (
-    #         "Bedroom and laundry", {"fields": ()}
-    #     ),
-    #     (
-    #         "Heating and cooling", {"fields": ()}
-    #     ),
-    #     (
-    #         "Home safety", {"fields": ()}
-    #     ),
-    # )
     pass
 
 @admin.register(models.Facility)
@@ -49,7 +23,8 @@ class PhotoAdmin(admin.ModelAdmin):
     list_display = ("__str__", "get_thumbnail",)
     
     def get_thumbnail(self, obj):
-        return mark_safe(f"<img width=50px src= \"{obj.file.url}\">/")
+        return mark_safe(f'<img width="50px" src="{obj.file.url}"/>')
+
     get_thumbnail.short_description = "Thumbnail"
 
 class PhotoInline(admin.TabularInline):
@@ -58,9 +33,62 @@ class PhotoInline(admin.TabularInline):
 class HouseAdmin(admin.ModelAdmin):
     inlines = (PhotoInline,)
 
+    fieldsets = (
+        (
+            "Basic Info",
+            {
+                "fields": (
+                    "name",
+                    "description",
+                    "country",
+                    "city",
+                    "address",
+                    "price",
+                )
+            },
+        ),
+        (
+            "Times",
+            {
+                "fields": (
+                    "check_in",
+                    "check_out",
+                )
+            },
+        ),
+        (
+            "Spaces",
+            {
+                "fields": (
+                    "guest",
+                    "bed",
+                    "bedroom",
+                    "bathroom",
+                )
+            },
+        ),
+        (
+            "More About the Space",
+            {
+                "fields": (
+                    "amenities",
+                    "facilities",
+                )
+            },
+        ),
+        (
+            "Last Details",
+            {"fields": ("host",)},
+        ),
+    )
+
+    ordering = (
+        "name",
+        "price",
+    )
+
     list_display = (
         "name",
-        "truncated_description",
         "country",
         "city",
         "price",
@@ -70,7 +98,8 @@ class HouseAdmin(admin.ModelAdmin):
         "bathroom",
         "check_in",
         "check_out",
-        "amenities_count",
+        "count_amenities",
+        "count_photos",
         "total_rating",
     )
 
@@ -82,25 +111,25 @@ class HouseAdmin(admin.ModelAdmin):
         "country",
     )
 
-    search_fields = [
+    raw_id_fields = ("host",)
+
+    search_fields = (
         "city",
         "^host__username",
-        "=price",
         "^name",
-    ]
+    )
 
     filter_horizontal = (
         "amenities",
         "facilities",
     )
 
-    # ordering = (
-    #     "name",
-    #     "price"
-    # )
+    def count_amenities(self, obj):
+        return obj.amenities.count()
 
-    raw_id_fields = ("host",)
+    count_amenities.short_description = "Amenity Count"
 
-    # def AmenityCount(self, obj):
-    #     return obj.amenities.count()
-    # AmenityCount.short_description = "amenities"
+    def count_photos(self, obj):
+        return obj.photos.count()
+
+    count_photos.short_description = "Photo Count"
