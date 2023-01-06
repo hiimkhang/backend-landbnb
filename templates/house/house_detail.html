@@ -1,0 +1,29 @@
+{%extends "base.html"%}
+    {%block page_title%}
+        {{house.name}}
+    {%endblock page_title%}
+
+    {%block content%}
+    <div>
+        <h1> {{house.name}} </h1>
+        <h3> {{house.description}} </h3>
+    </div>
+
+    <div>
+        <h2>
+            By: {{house.host.username}}
+        </h2>
+        <h3>Amenities</h3>
+        <ul>
+            {%for amenity in house.amenities.all%} 
+                <li> {{amenity}} </li>
+            {%endfor%}
+        </ul>
+        <h3>Facilities</h3>
+        <ul>
+        {% for facility in house.facilities.all %} 
+            <li>{{facility}}</li>
+        {% endfor %}
+        </ul>
+    <div>
+    {%endblock content%}
